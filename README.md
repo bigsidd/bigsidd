@@ -28,4 +28,4 @@ Haiku gathers, Sonnet analyzes, and Opus is the only model allowed near anything
 
 Ten years running product, partnerships and engineering in adtech: Kiip, NinthDecimal, InMarket, and now MomentScience, where I lead product partnerships. Two acquisitions, a $100M+ platform, 50M+ monthly users. UC Berkeley.
 
-[siddharthshah.me](https://siddharthshah.me) · [upwardvx.com](https://upwardvx.com) · [LinkedIn](https://linkedin.com/in/siddharthshah) · [X](https://x.com/bigsidd) · ss@upwardvx.com
+[siddharthshah.me](https://siddharthshah.me) · [upwardvx.com](https://upwardvx.com) · [LinkedIn](https://www.linkedin.com/in/iamsiddharthshah) · [X](https://x.com/bigsidd) · ss@upwardvx.com

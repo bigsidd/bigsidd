@@ -14,6 +14,7 @@ I build products at the intersection of adtech, partnerships, and developer plat
 
 ## What I run
 
+- **[os](https://github.com/bigsidd/os)** — My product judgment, written as rule files AI agents run, with routing tests and a monthly audit
 - **[goviralbro](https://github.com/bigsidd/goviralbro)** — Content automation system I use to run my creator operation (fork of charlesdove977/goviralbro)
 - **[AI-Trader](https://github.com/bigsidd/AI-Trader)** — Agent-native trading platform I study for agent swarm architecture patterns (fork of HKUDS/AI-Trader)
 

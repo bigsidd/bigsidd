@@ -1,32 +1,27 @@
 # Hi, I'm Sidd 👋
 
-I build products at the intersection of adtech, partnerships, and developer platforms.
+I've run a hotel, kept customers through an acquisition, built ad products used by 50M people a month, and now get Fortune 50 companies live on a platform. Same job every time: find what's actually blocking people, then fix it.
 
-**Currently:** Head of Partner Success @ [MomentScience](https://momentscience.com)
+## The path
 
----
+- **Ran a hotel.** General Manager of a $3.5M IHG property.
+- **Kept customers.** Customer success at Movoto, where we kept 97% of customers through an acquisition.
+- **Built product.** Nine years as a PM at Kiip, NinthDecimal and InMarket: ad SDKs, mobile ad networks, location data. 50M+ monthly users, $100M+ platform, two acquisitions.
+- **Get partners live.** Head of Partner Success at [MomentScience](https://momentscience.com). Took a Fortune 50 telecom from security review to production on a $5M contract, and took 10 partners live.
+
+## See it, don't take my word for it → [os](https://github.com/bigsidd/os)
+
+Most of my job is judgment calls, so I wrote mine down as rules AI agents run before they act, with tests that prove they still fire. [Watch an agent review the same partner email with and without them.](https://github.com/bigsidd/os/blob/main/examples/taste.md)
 
 ## What I ship
 
 - **[MoMoney](https://momoney.co)** — B2D platform for game publishers to monetize with contextual offers
-- **WiWo** — Location-based rewards mobile app (Flutter / iOS / Android)
-- **[upwardvx.com](https://upwardvx.com)** — Consulting practice for early-stage operators (Upward Ventures)
-
-## What I run
-
-- **[os](https://github.com/bigsidd/os)** — My product judgment, written as rule files AI agents run, with routing tests and a monthly audit
-- **[goviralbro](https://github.com/bigsidd/goviralbro)** — Content automation system I use to run my creator operation (fork of charlesdove977/goviralbro)
-- **[AI-Trader](https://github.com/bigsidd/AI-Trader)** — Agent-native trading platform I study for agent swarm architecture patterns (fork of HKUDS/AI-Trader)
+- **[WiWo](https://wiwomoments.com)** — Location-based rewards mobile app (Flutter / iOS / Android)
+- **[Upward Ventures](https://upwardvx.com)** — Product consulting practice for early-stage teams
 
 ---
 
-## Background
+> "He's the kind of product leader you want in the room when decisions matter."
+> — Spencer Johnson, EVP Activation Product, InMarket (managed Sidd directly)
 
-10+ years in adtech. Operator at Kiip → NinthDecimal → InMarket → MomentScience.
-0→1 builder twice. Two acquisitions survived. $100M+ platform. 50M+ MAU.
-
-UC Berkeley. Product School FPMC + DAC.
-
----
-
-*I build through judgment, not just code. Tools are leverage.*
+Long Beach, CA

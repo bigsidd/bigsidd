@@ -2,7 +2,7 @@
 
 I build products at the intersection of adtech, partnerships, and developer platforms.
 
-**Currently:** Head of Product Partnerships & SE @ [MomentScience](https://momentscience.com)
+**Currently:** Head of Partner Success @ [MomentScience](https://momentscience.com)
 
 ---
 

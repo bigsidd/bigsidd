@@ -9,10 +9,10 @@ Since 2015 I've worked on one idea: an ad works best at a moment someone is alre
 
 MomentScience runs [Moments](https://docs.momentscience.com): ads as perks on order confirmation and thank-you pages.
 
-- Took a Fortune 50 telecom through security review and into production on a $5M contract.
-- Took 10 enterprise partners live. Supported 18 deals worth about $8.5M, and 12 closed for about $7.1M.
+- Took a Fortune 50 telecom through security review and into production.
+- Took 10 enterprise partners live, and supported 18 enterprise deals.
 - Turned launch work into a system: security questionnaire answers, integration checklists, and the AI tools every partner launch now runs on.
-- Took on product leadership without a title change. I directed the iOS and Android launch of [WiWo](https://wiwomoments.com), a location-based rewards app, and run [MoMoney](https://momoney.co), a gaming offer platform, as de facto GM.
+- Directed the iOS and Android launch of [WiWo](https://wiwomoments.com), a location-based rewards app, and run [MoMoney](https://momoney.co), a gaming offer platform.
 
 ## How I make calls: [os](https://github.com/bigsidd/os)
 
@@ -24,6 +24,6 @@ Nine years as a PM. At Kiip I moved from customer success into product: the ads 
 
 Earlier I ran a $3.5M IHG hotel as GM, and did customer success at Movoto, where we kept 97% of customers through an acquisition.
 
-Since 2024 I've also run [Upward Ventures](https://upwardvx.com), product consulting for early-stage teams: $500K+ in added client revenue.
+Since 2024 I've also run [Upward Ventures](https://upwardvx.com), product consulting for early-stage teams.
 
 [LinkedIn](https://www.linkedin.com/in/iamsiddharthshah) · Long Beach, CA

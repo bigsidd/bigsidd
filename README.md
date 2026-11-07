@@ -1,16 +1,15 @@
 # Siddharth (Sidd) Shah
 
-Since 2015 I've worked on one idea: an ad works best at a moment someone is already winning. At Kiip, that was a reward for hitting an achievement in an app. At MomentScience, it's a perk on the order confirmation page.
+**I build products and the partnerships that make them pay.**
 
-> "He's the kind of product leader you want in the room when decisions matter."
-> Spencer Johnson, EVP Activation Product at InMarket, who managed me directly
+Since 2015 I've worked on one idea: an ad works best at a moment someone is already winning. At Kiip, that was a reward for hitting an achievement in an app. At MomentScience, it's a perk on the order confirmation page.
 
 ## Now: Head of Partner Success at [MomentScience](https://momentscience.com)
 
 MomentScience runs [Moments](https://docs.momentscience.com): ads as perks on order confirmation and thank-you pages.
 
-- Took a Fortune 50 telecom through security review and into production.
-- Took 10 enterprise partners live, and supported 18 enterprise deals.
+- Ran the technical side of 18 enterprise deals, and took 10 enterprise partners live, including a Fortune 50 telecom from security review to production.
+- 10 of the 12 partners I've owned are still live, and the ones I launched keep growing.
 - Turned launch work into a system: security questionnaire answers, integration checklists, and the AI tools every partner launch now runs on.
 - Directed the iOS and Android launch of [WiWo](https://wiwomoments.com), a location-based rewards app, and run [MoMoney](https://momoney.co), a gaming offer platform.
 
@@ -20,10 +19,13 @@ My product judgment, written as rules AI agents run before they act. A monthly r
 
 ## Before
 
-Nine years as a PM. At Kiip I moved from customer success into product: the ads SDK and advertiser tools used by 500+ brands, on a platform that reached 50M+ users. Kiip was acquired by NinthDecimal, where I worked on location intelligence at 10M+ daily events. NinthDecimal was then acquired by InMarket, where I led the product side of the integration as Sr PM and finished six months early.
+At Kiip I moved from customer success into product: the ads SDK and advertiser tools used by 500+ brands, reaching 50M+ users. Kiip was acquired by NinthDecimal, where I worked on location intelligence at 10M+ daily events. NinthDecimal was then acquired by InMarket, where I led the product side of the integration as Sr PM and finished six months early.
 
-Earlier I ran a $3.5M IHG hotel as GM, and did customer success at Movoto, where we kept 97% of customers through an acquisition.
+> "He's the kind of product leader you want in the room when decisions matter."
+> Spencer Johnson, EVP Activation Product at InMarket, who managed me directly
 
-Since 2024 I've also run [Upward Ventures](https://upwardvx.com), product consulting for early-stage teams.
+Earlier I ran a $3.5M IHG hotel as GM, and did customer success for about 400 agents at Movoto.
 
-[LinkedIn](https://www.linkedin.com/in/iamsiddharthshah) · Long Beach, CA
+Since 2024 I've also run [Upward Ventures](https://upwardvx.com): consulting and agent-built tools for small teams.
+
+[LinkedIn](https://www.linkedin.com/in/iamsiddharthshah) · [Resume](https://siddharthshah.me/resume/) · Long Beach, CA

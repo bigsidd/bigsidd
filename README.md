@@ -15,7 +15,7 @@ MomentScience runs [Moments](https://docs.momentscience.com): ads as perks on or
 
 ## How I make calls: [os](https://github.com/bigsidd/os)
 
-My product judgment, written as rules AI agents run before they act. A monthly regression checks that each rule still fires: 8 of 9 pass, and the miss is explained. [See the same partner email reviewed with and without them.](https://github.com/bigsidd/os/blob/main/examples/taste.md)
+Twelve rules I use to decide what's worth building, each with an example, when it doesn't apply, and test cases that run on every change.
 
 ## Before
 

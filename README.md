@@ -15,7 +15,7 @@ MomentScience runs [Moments](https://docs.momentscience.com): ads as perks on or
 
 ## How I make calls: [os](https://github.com/bigsidd/os)
 
-Twelve rules I use to decide what's worth building, each with an example, when it doesn't apply, and test cases that run on every change.
+Fourteen rules I use to decide what's worth building, each with an example, when it doesn't apply, and test cases an agent is graded on. Last run: 111 of 168 (66%), short of my 90% bar.
 
 ## Before
 

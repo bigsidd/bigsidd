@@ -233,6 +233,41 @@ class Round3(Repo):
         self.assertEqual(cl.slug("[Foo][] and [x](y)"), "foo-and-x")
 
 
+class Round4(Repo):
+    def test_srcset_commas_inside_urls(self):
+        u1 = "https://github-readme-stats.vercel.app/api?username=x&hide=contribs,prs&theme=dark"
+        u2 = "https://skillicons.dev/icons?i=js,ts,py"
+        got = cl.link_targets('<img srcset="%s 1x, %s 2x"><img src="%s">' % (u1, u2, u2))
+        self.assertEqual(got, [u1, u2, u2])
+        self.assertEqual(cl.link_targets('<source srcset="a.png,b.png 2x">'), ["a.png,b.png"])
+
+    def test_heading_with_leading_image_or_tag_keeps_hyphen(self):
+        self.write("x.gif")
+        self.write("x.png")
+        t = '## <img src="x.gif" width="25"> Tech Stack\n\n## ![chart](x.png) GitHub Stats\n'
+        self.assertEqual(cl.anchors_of(t), {"-tech-stack", "-github-stats"})
+        self.assertEqual(self.errors(t + "[a](#-tech-stack) [b](#-github-stats)"), [])
+        self.assertEqual(len(self.errors(t + "[a](#tech-stack)")), 1)
+        self.assertEqual(len(self.errors(t + "[a](#github-stats)")), 1)
+
+    def test_refdef_needs_destination_then_eol_or_title(self):
+        self.assertEqual(cl.link_targets("[2024]: Joined Acme as lead"), [])
+        self.assertEqual(cl.link_targets('[a]: x.md "T"\n[b]: <y z.md>\n[c]: w.md (T)\n[d]: v.md'),
+                         ["x.md", "y z.md", "w.md", "v.md"])
+
+    def test_blockquote_headings(self):
+        self.assertEqual(cl.anchors_of("> ## Note\n>\n> Other\n> ---\n"), {"note", "other"})
+        self.assertEqual(self.errors("> ## Note\n\n[a](#note)"), [])
+
+    def test_perf_long_heading_and_bracket_runs(self):
+        for text in ("# x" + " " * 3000 + "y\n", "#" + " " * 3000 + "\n", "a](" * 20000,
+                     "[a](" * 15000, "[" * 20000 + "](x" * 20000):
+            t0 = time.monotonic()
+            cl.anchors_of(text)
+            cl.link_targets(text)
+            self.assertLess(time.monotonic() - t0, 1, repr(text[:12]))
+
+
 class External(unittest.TestCase):
     def test_malformed_url_is_an_error_string_not_a_crash(self):
         err = cl.check_url("https://[oops", time.monotonic() + 5)

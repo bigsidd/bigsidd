@@ -18,8 +18,12 @@ import urllib.error
 import urllib.request
 from urllib.parse import unquote
 
-REFDEF = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*<?(\S+?)>?(?:\s+.*)?$", re.M)
-HEADING = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+REFDEF = re.compile(
+    r"^ {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*(?:<([^>\n]*)>|(\S+))"
+    r"(?:[ \t]+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?[ \t]*$", re.M)
+ATX = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]|$)(.*)$")
+QUOTE = re.compile(r"^ {0,3}(?:>[ \t]?)+")
+IMAGE = re.compile(r"!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])")
 SETEXT = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
 COMMENT = re.compile(r"<!--.*?-->", re.S)
@@ -72,32 +76,47 @@ def strip_code(text):
 
 
 def slug(heading):
-    s = html.unescape(heading)
+    s = IMAGE.sub("", html.unescape(heading))
     s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
     s = re.sub(r"\[([^\]]*)\]\[[^\]]*\]", r"\1", s)
     codes = []
     s = CODESPAN.sub(lambda m: codes.append(m.group(2)) or "\0%d\0" % (len(codes) - 1), s)
     s = re.sub(r"(?<!\w)_+|_+(?!\w)", "", s)  # emphasis, but not snake_case
     s = re.sub(r"\0(\d+)\0", lambda m: codes[int(m.group(1))], s)
-    s = re.sub(r"<[^>]+>", "", s).strip().lower()
+    s = re.sub(r"<[^>]+>", "", s).lower()  # no strip: GitHub keeps a leading space
     return re.sub(r"[^\w\- ]", "", s).replace(" ", "-")
+
+
+def atx(line):
+    """Text of an ATX heading line, or None. Linear: no backtracking over whitespace."""
+    m = ATX.match(line)
+    if not m:
+        return None
+    t = m.group(2).strip(" \t")
+    j = len(t)
+    while j and t[j - 1] == "#":
+        j -= 1
+    if j < len(t) and (j == 0 or t[j - 1] in " \t"):
+        t = t[:j].rstrip(" \t")
+    return t or None
 
 
 def headings(text):
     """ATX and setext heading texts in document order."""
     out, para, plain = [], [], True
     for line in text.splitlines():
+        line = QUOTE.sub("", line)
         if not line.strip():
             para = []
-        elif m := HEADING.match(line):
-            out.append(m.group(1))
+        elif (h := atx(line)) is not None:
+            out.append(h)
             para = []
         elif para and plain and SETEXT.match(line):
             out.append(" ".join(para))
             para = []
         else:
             if not para:
-                plain = not (line.lstrip().startswith(">") or LIST_ITEM.match(line))
+                plain = not LIST_ITEM.match(line)
             para.append(line.strip())
     return out
 
@@ -140,7 +159,7 @@ def _dest(text, i):
         dest, i = text[i + 1:j], j + 1
     else:
         start, depth = i, 0
-        while i < n:
+        while i < min(n, start + 2048):
             c = text[i]
             if c == "\\":
                 i += 2
@@ -149,6 +168,8 @@ def _dest(text, i):
                 break
             if c == "(":
                 depth += 1
+                if depth > 32:  # no real URL nests this deep; bounds the scan on junk input
+                    return None
             elif c == ")":
                 if depth == 0:
                     break
@@ -171,44 +192,31 @@ def _dest(text, i):
     return None
 
 
-def _escaped(text, k):
-    n = 0
-    while k - n - 1 >= 0 and text[k - n - 1] == "\\":
-        n += 1
-    return n % 2 == 1
-
-
-def _opens_link(text, j):
-    """True if the ']' at j closes a real '[' in the same paragraph (neither escaped)."""
-    if _escaped(text, j):
-        return False
-    depth, k = 0, j - 1
-    while k >= 0 and not (text[k] == "\n" and k and text[k - 1] == "\n"):
-        if text[k] in "[]" and not _escaped(text, k):
-            if text[k] == "]":
-                depth += 1
-            elif depth == 0:
-                return True
-            else:
-                depth -= 1
-        k -= 1
-    return False
-
-
 def link_targets(text):
     """Inline link/image destinations and reference definitions, outside code."""
     text = CODESPAN.sub(" ", strip_code(text))
-    out, i = [], 0
-    while (i := text.find("](", i)) >= 0:
-        j, i = i, i + 2
-        d = _dest(text, i) if _opens_link(text, j) else None
-        if d:
-            out.append(d)
+    out, stack, i, n = [], [], 0, len(text)
+    while i < n:  # one pass; '[' stack per paragraph, so an unescaped '[' must open each '](' 
+        c = text[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "\n" and text.startswith("\n", i + 1):
+            stack.clear()
+        elif c == "[":
+            stack.append(i)
+        elif c == "]" and stack:
+            stack.pop()
+            if text.startswith("(", i + 1) and (d := _dest(text, i + 2)):
+                out.append(d)
+        i += 1
     for tag, attrs in html_tags(text):
         for k, v in attrs:
             if k in HTML_URLS.get(tag, ()):
-                out += [c.split()[0] for c in v.split(",") if c.strip()] if k == "srcset" else [v.strip()]
-    return out + REFDEF.findall(text)
+                # srcset candidates split on a comma plus whitespace, so URLs may contain commas
+                out += [c.split()[0] for c in re.split(r",\s+", v.strip()) if c.strip()] \
+                    if k == "srcset" else [v.strip()]
+    return out + [m.group(1) if m.group(1) is not None else m.group(2) for m in REFDEF.finditer(text)]
 
 
 def find_root(path):

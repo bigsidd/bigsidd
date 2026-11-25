@@ -26,7 +26,9 @@ COMMENT = re.compile(r"<!--.*?-->", re.S)
 FENCE_OPEN = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 FENCE_CLOSE = re.compile(r"^\s*(`{3,}|~{3,})\s*$")
 CODESPAN = re.compile(r"(?<!`)(`+)(?!`)((?:(?!\n[ \t]*\n).)+?)(?<!`)\1(?!`)", re.S)
-HTML_ANCHOR = re.compile(r"<a\s[^>]*?\b(?:id|name)\s*=\s*[\"']([^\"']+)[\"']", re.I)
+HTML_TAG = re.compile(r"<([A-Za-z][A-Za-z0-9]*)((?:\s[^<>]*)?)>")  # [^<>] keeps scans linear
+HTML_ATTR = re.compile(r"""([A-Za-z_:][-\w:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))""")
+HTML_URLS = {"img": ("src", "srcset"), "source": ("src", "srcset"), "a": ("href",)}
 SCHEME = re.compile(r"^(?:[a-z][a-z0-9+.\-]*:|//)", re.I)
 ATTEMPTS, TIMEOUT, BUDGET, WORKERS = 3, 15, 150, 8
 UA = "Mozilla/5.0 (compatible; readme-link-check)"
@@ -72,6 +74,7 @@ def strip_code(text):
 def slug(heading):
     s = html.unescape(heading)
     s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    s = re.sub(r"\[([^\]]*)\]\[[^\]]*\]", r"\1", s)
     codes = []
     s = CODESPAN.sub(lambda m: codes.append(m.group(2)) or "\0%d\0" % (len(codes) - 1), s)
     s = re.sub(r"(?<!\w)_+|_+(?!\w)", "", s)  # emphasis, but not snake_case
@@ -99,6 +102,14 @@ def headings(text):
     return out
 
 
+def html_tags(text):
+    """Yield (tag, [(attr, value)]) for each HTML tag, attributes lower-cased and unescaped."""
+    for m in HTML_TAG.finditer(text):
+        attrs = [(a.lower(), html.unescape(b or c or d or ""))
+                 for a, b, c, d in HTML_ATTR.findall(m.group(2))]
+        yield m.group(1).lower(), attrs
+
+
 def anchors_of(text):
     """Heading ids in document order (GitHub's -1, -2 suffixes on repeats) plus <a id/name>."""
     text = strip_code(text)
@@ -112,7 +123,8 @@ def anchors_of(text):
             cand = "%s-%d" % (base, n)
         seen[base] = n + 1
         ids.add(cand)
-    ids.update(a.lower() for a in HTML_ANCHOR.findall(CODESPAN.sub(" ", text)))
+    for _, attrs in html_tags(CODESPAN.sub(" ", text)):
+        ids.update(v.lower() for k, v in attrs if k in ("id", "name"))
     return ids
 
 
@@ -192,6 +204,10 @@ def link_targets(text):
         d = _dest(text, i) if _opens_link(text, j) else None
         if d:
             out.append(d)
+    for tag, attrs in html_tags(text):
+        for k, v in attrs:
+            if k in HTML_URLS.get(tag, ()):
+                out += [c.split()[0] for c in v.split(",") if c.strip()] if k == "srcset" else [v.strip()]
     return out + REFDEF.findall(text)
 
 
@@ -262,11 +278,11 @@ def check_local(path, root=None, cache=None):
 
     def anchors(p):
         if p not in cache:
-            with open(p, encoding="utf-8-sig") as f:
+            with open(p, encoding="utf-8-sig", errors="replace") as f:
                 cache[p] = anchors_of(f.read())
         return cache[p]
 
-    with open(path, encoding="utf-8-sig") as f:
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
         text = f.read()
     errors, externals, checked = [], [], 0
     for url in dict.fromkeys(link_targets(text)):
@@ -290,7 +306,9 @@ def check_local(path, root=None, cache=None):
         if not os.path.exists(full):
             err = "doesn't exist"
         elif frag and os.path.isfile(full) and full.lower().endswith((".md", ".markdown")):
-            if frag.lower() not in anchors(full) and frag.lower() != "top":
+            f = frag.lower()
+            f = f[len("user-content-"):] if f.startswith("user-content-") else f
+            if not {frag.lower(), f} & (anchors(full) | {"top"}):
                 err = "no heading for #%s in %s" % (frag, target or "this file")
         if err:
             errors.append("%s: %s %s" % (path, url, err))

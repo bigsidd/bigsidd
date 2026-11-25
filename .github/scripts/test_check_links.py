@@ -185,6 +185,54 @@ class Round2(Repo):
         self.assertIn("1 external warnings", r.stdout)
 
 
+class Round3(Repo):
+    def test_html_local_links_checked(self):
+        t = ('<p align="center"><img src="./assets/missing-banner.png">'
+             '<a href="docs/missing.md">Docs</a></p>')
+        self.assertEqual(len(self.errors(t)), 2)
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "README.md")
+            with open(p, "w") as f:
+                f.write(t)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cl.main([p]), 1)
+
+    def test_html_links_ok_srcset_external_and_ignored_regions(self):
+        self.write("a.png")
+        self.write("b.png")
+        t = ('<picture><source srcset="a.png 1x, b.png 2x"><img src="a.png"></picture>\n'
+             '<a href="https://example.com/x">x</a> <img src="https://example.com/i.png">\n'
+             '`<img src="gone.png">`\n<!-- <a href="gone.md">x</a> -->\n')
+        self.assertEqual(self.errors(t), [])
+        self.assertEqual(len(self.errors('<source srcset="a.png 1x, nope.png 2x">')), 1)
+        _, _, ext = self.check(t)
+        self.assertEqual(ext, ["https://example.com/x", "https://example.com/i.png"])
+
+    def test_id_name_on_any_tag(self):
+        t = '<div id="contact"></div>\n<h2 id="stack">S</h2>\n<span name=x1></span>\n'
+        self.assertEqual(self.errors(t + "[a](#contact) [b](#stack) [c](#x1)"), [])
+        self.assertEqual(len(self.errors(t + "[a](#nope)")), 1)
+
+    def test_tag_scan_is_linear(self):
+        t0 = time.monotonic()
+        cl.anchors_of("<a " * 20000)
+        cl.link_targets("<a " * 20000)
+        self.assertLess(time.monotonic() - t0, 2)
+
+    def test_non_utf8_target_does_not_crash(self):
+        with open(os.path.join(self.root, "legacy.md"), "wb") as f:
+            f.write(b"# Caf\xe9\n")
+        self.assertEqual(self.errors("[a](legacy.md#caf)"), [])
+
+    def test_user_content_prefix(self):
+        self.assertEqual(self.errors("# Foo\n[a](#user-content-foo)"), [])
+        self.assertEqual(len(self.errors("# Foo\n[a](#user-content-bar)")), 1)
+
+    def test_reference_links_in_headings(self):
+        self.assertEqual(cl.slug("[Foo][bar]"), "foo")
+        self.assertEqual(cl.slug("[Foo][] and [x](y)"), "foo-and-x")
+
+
 class External(unittest.TestCase):
     def test_malformed_url_is_an_error_string_not_a_crash(self):
         err = cl.check_url("https://[oops", time.monotonic() + 5)

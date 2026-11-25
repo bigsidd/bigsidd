@@ -4,6 +4,7 @@ import contextlib
 import io
 import os
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -108,6 +109,80 @@ class Parsing(Repo):
 
     def test_ref_defs_and_images(self):
         self.assertEqual(self.targets("![i](img.png)\n\n[r]: ref.md\n"), ["img.png", "ref.md"])
+
+
+class Round2(Repo):
+    def test_footnote_definitions_skipped(self):
+        self.assertEqual(self.errors("Text[^1].\n\n[^1]: See the docs\n"), [])
+
+    def test_html_comments_hidden_from_links_and_headings(self):
+        t = "<!--\n[a](gone.md)\n# Hidden\n-->\n[b](#hidden) <!-- [c](gone2.md) -->"
+        self.assertEqual(len(self.errors(t)), 1)
+        self.assertEqual(cl.link_targets(t), ["#hidden"])
+
+    def test_setext_headings(self):
+        t = "Install\n=======\n\nUsage guide\n-----\n\ntext\n\n---\n\nafter\n"
+        self.assertEqual(cl.anchors_of(t), {"install", "usage-guide"})
+        self.assertEqual(self.errors(t + "[a](#install) [b](#usage-guide)"), [])
+        self.assertEqual(cl.anchors_of("- item\n---\n"), set())
+
+    def test_slug_emphasis_entities_and_snake_case(self):
+        self.assertEqual(cl.slug("_Setup_"), "setup")
+        self.assertEqual(cl.slug("**Bold** and *it*"), "bold-and-it")
+        self.assertEqual(cl.slug("A &amp; B"), "a--b")
+        self.assertEqual(cl.slug("snake_case"), "snake_case")
+        self.assertEqual(cl.slug("`_x_` call"), "_x_-call")
+
+    def test_bom(self):
+        p = os.path.join(self.root, "README.md")
+        with open(p, "w", encoding="utf-8-sig") as f:
+            f.write("# Top\n[a](#top)\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cl.check_local(p)[1], [])
+
+    def test_indented_code_and_escaped_brackets(self):
+        t = "para\n\n    [a](gone.md)\n\n\t[b](gone.md)\n\n- item\n\n    [c](gone.md)\n"
+        self.assertEqual(cl.link_targets(t), ["gone.md"])  # only the list continuation
+        self.assertEqual(cl.link_targets("\\[x\\](gone.md) \\[y](gone.md) [ok](k.md)"), ["k.md"])
+        self.assertEqual(cl.link_targets("line one\n    [lazy](k.md)"), ["k.md"])
+
+    def test_process_exits_within_budget_against_drip_server(self):
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(8)
+        port, held = srv.getsockname()[1], []
+
+        def drip(c):
+            try:
+                c.recv(4096)
+                c.sendall(b"HTTP/1.1 200 OK\r\n")
+                while True:
+                    time.sleep(1)
+                    c.sendall(b"X-Drip: 1\r\n")
+            except OSError:
+                pass
+
+        def accept():
+            while True:
+                try:
+                    c, _ = srv.accept()
+                except OSError:
+                    return
+                held.append(c)
+                threading.Thread(target=drip, args=(c,), daemon=True).start()
+
+        threading.Thread(target=accept, daemon=True).start()
+        self.addCleanup(srv.close)
+        p = self.write("README.md", "[d](http://127.0.0.1:%d/)\n" % port)
+        env = dict(os.environ, no_proxy="127.0.0.1", NO_PROXY="127.0.0.1", LINK_CHECK_BUDGET="3")
+        t = time.monotonic()
+        r = subprocess.run([sys.executable, "-I", cl.__file__, p], env=env,
+                           capture_output=True, text=True, timeout=30)
+        took = time.monotonic() - t
+        self.assertLess(took, 3 + 5)
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("::warning::", r.stdout)
+        self.assertIn("1 external warnings", r.stdout)
 
 
 class External(unittest.TestCase):

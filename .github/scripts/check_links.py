@@ -9,6 +9,7 @@ down never blocks a merge.
     python3 .github/scripts/check_links.py [file.md ...]
 """
 import concurrent.futures as cf
+import html
 import os
 import re
 import sys
@@ -17,10 +18,13 @@ import urllib.error
 import urllib.request
 from urllib.parse import unquote
 
-REFDEF = re.compile(r"^ {0,3}\[[^\]]+\]:\s*<?(\S+?)>?(?:\s+.*)?$", re.M)
-HEADING = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$", re.M)
-FENCE_OPEN = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
-FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*$")
+REFDEF = re.compile(r"^ {0,3}\[(?!\^)[^\]]+\]:\s*<?(\S+?)>?(?:\s+.*)?$", re.M)
+HEADING = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+SETEXT = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
+LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
+COMMENT = re.compile(r"<!--.*?-->", re.S)
+FENCE_OPEN = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+FENCE_CLOSE = re.compile(r"^\s*(`{3,}|~{3,})\s*$")
 CODESPAN = re.compile(r"(?<!`)(`+)(?!`)((?:(?!\n[ \t]*\n).)+?)(?<!`)\1(?!`)", re.S)
 HTML_ANCHOR = re.compile(r"<a\s[^>]*?\b(?:id|name)\s*=\s*[\"']([^\"']+)[\"']", re.I)
 SCHEME = re.compile(r"^(?:[a-z][a-z0-9+.\-]*:|//)", re.I)
@@ -28,37 +32,78 @@ ATTEMPTS, TIMEOUT, BUDGET, WORKERS = 3, 15, 150, 8
 UA = "Mozilla/5.0 (compatible; readme-link-check)"
 
 
-def strip_fences(text):
-    """Blank out fenced code blocks (``` or ~~~); a fence closes on the same marker, >= as long."""
-    out, fence = [], None
+def strip_code(text):
+    """Blank out fenced (``` or ~~~; closes on the same marker, >= as long) and indented code,
+    then HTML comments, keeping line breaks so block structure survives."""
+    out, fence, prev_blank, in_list, in_code = [], None, True, False, False
     for line in text.splitlines():
-        if fence is None:
-            m = FENCE_OPEN.match(line)
-            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
-                fence = m.group(1)
-                out.append("")
-            else:
-                out.append(line)
+        if fence is not None:
+            out.append("")
+            m = FENCE_CLOSE.match(line)
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+                fence = None
             continue
-        out.append("")
-        m = FENCE_CLOSE.match(line)
-        if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
-            fence = None
-    return "\n".join(out)
+        blank = not line.strip()
+        if in_code:
+            if blank or line.startswith(("    ", "\t")):
+                out.append("")
+                continue
+            in_code = False
+        m = FENCE_OPEN.match(line)
+        if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+            fence, prev_blank = m.group(1), True
+            out.append("")
+        elif blank:
+            prev_blank = True
+            out.append("")
+        elif prev_blank and not in_list and line.startswith(("    ", "\t")):
+            in_code = True
+            out.append("")
+        else:
+            if LIST_ITEM.match(line):
+                in_list = True
+            elif prev_blank and not line[0].isspace():
+                in_list = False
+            prev_blank = False
+            out.append(line)
+    return COMMENT.sub(lambda m: "\n" * m.group().count("\n"), "\n".join(out))
 
 
 def slug(heading):
-    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading)
-    s = CODESPAN.sub(r"\2", s)
+    s = html.unescape(heading)
+    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    codes = []
+    s = CODESPAN.sub(lambda m: codes.append(m.group(2)) or "\0%d\0" % (len(codes) - 1), s)
+    s = re.sub(r"(?<!\w)_+|_+(?!\w)", "", s)  # emphasis, but not snake_case
+    s = re.sub(r"\0(\d+)\0", lambda m: codes[int(m.group(1))], s)
     s = re.sub(r"<[^>]+>", "", s).strip().lower()
     return re.sub(r"[^\w\- ]", "", s).replace(" ", "-")
 
 
+def headings(text):
+    """ATX and setext heading texts in document order."""
+    out, para, plain = [], [], True
+    for line in text.splitlines():
+        if not line.strip():
+            para = []
+        elif m := HEADING.match(line):
+            out.append(m.group(1))
+            para = []
+        elif para and plain and SETEXT.match(line):
+            out.append(" ".join(para))
+            para = []
+        else:
+            if not para:
+                plain = not (line.lstrip().startswith(">") or LIST_ITEM.match(line))
+            para.append(line.strip())
+    return out
+
+
 def anchors_of(text):
     """Heading ids in document order (GitHub's -1, -2 suffixes on repeats) plus <a id/name>."""
-    text = strip_fences(text)
+    text = strip_code(text)
     ids, seen = set(), {}
-    for h in HEADING.findall(text):
+    for h in headings(text):
         base = slug(h)
         n = seen.get(base, 0)
         cand = base if n == 0 else "%s-%d" % (base, n)
@@ -114,13 +159,37 @@ def _dest(text, i):
     return None
 
 
+def _escaped(text, k):
+    n = 0
+    while k - n - 1 >= 0 and text[k - n - 1] == "\\":
+        n += 1
+    return n % 2 == 1
+
+
+def _opens_link(text, j):
+    """True if the ']' at j closes a real '[' in the same paragraph (neither escaped)."""
+    if _escaped(text, j):
+        return False
+    depth, k = 0, j - 1
+    while k >= 0 and not (text[k] == "\n" and k and text[k - 1] == "\n"):
+        if text[k] in "[]" and not _escaped(text, k):
+            if text[k] == "]":
+                depth += 1
+            elif depth == 0:
+                return True
+            else:
+                depth -= 1
+        k -= 1
+    return False
+
+
 def link_targets(text):
     """Inline link/image destinations and reference definitions, outside code."""
-    text = CODESPAN.sub(" ", strip_fences(text))
+    text = CODESPAN.sub(" ", strip_code(text))
     out, i = [], 0
     while (i := text.find("](", i)) >= 0:
-        i += 2
-        d = _dest(text, i)
+        j, i = i, i + 2
+        d = _dest(text, i) if _opens_link(text, j) else None
         if d:
             out.append(d)
     return out + REFDEF.findall(text)
@@ -193,11 +262,11 @@ def check_local(path, root=None, cache=None):
 
     def anchors(p):
         if p not in cache:
-            with open(p, encoding="utf-8") as f:
+            with open(p, encoding="utf-8-sig") as f:
                 cache[p] = anchors_of(f.read())
         return cache[p]
 
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         text = f.read()
     errors, externals, checked = [], [], 0
     for url in dict.fromkeys(link_targets(text)):
@@ -254,4 +323,7 @@ def main(paths, budget=BUDGET):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    code = main(sys.argv[1:], float(os.environ.get("LINK_CHECK_BUDGET", BUDGET)))
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code)  # worker threads stuck in a slow read must not keep the process alive
